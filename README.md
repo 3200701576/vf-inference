@@ -32,9 +32,13 @@ python inference.py \
   --output outputs/predictions.csv
 ```
 
-The model settings are fixed in the code. Missing or incompatible weights cause
-an error. Use `--device cpu` to select CPU execution; other options are listed by
-`python inference.py --help`.
+The model uses branch-specific RNFL-to-VF cross-attention, distance-biased VF
+self-attention, and adaptive fusion. Settings are fixed in the code. Supply a
+checkpoint trained with this query-based architecture; pooling-ablation weights
+are not supported, even when their parameter names and shapes match.
+
+Missing or incompatible tensor keys or shapes cause an error. Use `--device cpu`
+to select CPU execution; other options are listed by `python inference.py --help`.
 
 ## Check execution without weights
 

@@ -30,11 +30,6 @@ class CrossAttention(nn.Module):
     def forward(self, query_tokens, context_tokens, return_attn: bool=False):
         (B, Nq, _) = query_tokens.size()
         (_, Nk, _) = context_tokens.size()
-        if not hasattr(self, '_debug_count'):
-            self._debug_count = 0
-        self._debug_count += 1
-        if self._debug_count <= 3:
-            print(f'[CrossAttention] query: {query_tokens.shape}, context: {context_tokens.shape}')
         q = self.query(query_tokens)
         k = self.key(context_tokens)
         v = self.value(context_tokens)
@@ -266,7 +261,7 @@ class TriBranchBackbone(nn.Module):
 
 
 class MultiScaleRNFLToVF(nn.Module):
-    """Selected polar-MLP, pooled-feature, adaptive-fusion inference variant.
+    """Selected polar-MLP, query-cross-attention, adaptive-fusion inference variant.
 
     Unused parameterized heads and attention modules remain registered so that
     full checkpoints can be loaded strictly. Only the final prediction is computed.
@@ -335,7 +330,8 @@ class MultiScaleRNFLToVF(nn.Module):
         tokens = []
         for name in ('thick', 'text', 'curv'):
             feature = self.branch_proj[name](features[name]).flatten(2).permute(0, 2, 1)
-            pooled = feature.mean(dim=1, keepdim=True).expand(-1, 52, -1) + pos
-            tokens.append(self.vf_self_attn(pooled))
+            aligned = self.branch_attn[name](query, feature)
+            aligned = self.branch_norms[name](aligned + query)
+            tokens.append(self.vf_self_attn(aligned))
         fused = self.parallel_fusion(query, tokens)
         return self.out_linear(fused)
